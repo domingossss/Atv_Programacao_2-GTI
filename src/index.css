@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Premium Beauty Salon Palette */
+    --background: 40 30% 98%;
+    --foreground: 0 0% 13%;
+    
+    --primary: 350 55% 57%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 28 35% 84%;
+    --secondary-foreground: 0 0% 13%;
+    
+    --accent: 85 10% 58%;
+    --accent-foreground: 0 0% 100%;
+    
+    --muted: 40 20% 94%;
+    --muted-foreground: 0 0% 45%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 13%;
+    
+    --border: 350 30% 88%;
+    --input: 350 20% 92%;
+    --ring: 350 55% 57%;
+    
+    --radius: 0.75rem;
+
+    /* Admin Panel Specific Tokens */
+    --admin-sidebar: 0 0% 5%;
+    --admin-sidebar-foreground: 350 55% 57%;
+    --admin-background: 40 30% 98%;
+  }
+
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+    
+    --primary: 350 55% 57%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 28 35% 84%;
+    --secondary-foreground: 0 0% 13%;
+    
+    --accent: 85 10% 58%;
+    --accent-foreground: 0 0% 100%;
+    
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
+    
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+    
+    --border: 350 30% 25%;
+    --input: 350 30% 25%;
+    --ring: 350 55% 57%;
+
+    /* Admin Panel Specific Tokens */
+    --admin-sidebar: 0 0% 3%;
+    --admin-sidebar-foreground: 350 55% 57%;
+    --admin-background: 0 0% 8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    text-wrap: balance;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* specific utilities */
+.text-shadow-elegant {
+  text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+.glass-panel {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+}
