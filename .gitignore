@@ -7,16 +7,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependências (Nunca enviar para o GitHub)
+node_modules/
+dist/
+dist-ssr/
 *.local
 
-# Editor directories and files
+# Pasta de cache do Vite
+.vite/
+
+# Variáveis de ambiente / Segredos (Evita vazar chaves de API)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Arquivos do Sistema Operacional (Windows / macOS)
+Thumbs.db
+db
+Desktop.ini
+.DS_Store
+*.icloud
+
+# Configurações de IDEs (VS Code / Windsurf / JetBrains)
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
