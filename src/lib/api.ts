@@ -2,7 +2,7 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'ax
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3333',
+  baseURL: import.meta.env.VITE_API_URL || 'charpynterhair.onrender.com',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
