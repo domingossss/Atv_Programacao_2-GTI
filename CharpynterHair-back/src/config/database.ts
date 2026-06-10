@@ -19,7 +19,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'charpynterhair',
   synchronize: process.env.NODE_ENV !== 'production', // Cria/atualiza tabelas automaticamente (apenas em dev!)
   logging: process.env.NODE_ENV === 'development',
-  ssl: process.env.DB_HOST?.includes('render.com') ? true : false,
+  ssl: process.env.DB_HOST ? { rejectUnauthorized: false } : false,
   entities: [
     Admin,
     RefreshToken,
