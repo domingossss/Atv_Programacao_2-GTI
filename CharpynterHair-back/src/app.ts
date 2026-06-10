@@ -26,7 +26,7 @@ app.use(cookieParser());
 // 3. CORS (Restrito)
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || 'https://charpynterhair.onrender.com',
     credentials: true, // Permite envio de cookies
   })
 );
