@@ -1,7 +1,7 @@
 
-import { Helmet } from 'react-helmet';
-import { 
-  Sparkles, Palette, Droplet, Wind, Wand2, Eye, 
+import Helmet from 'react-helmet';
+import {
+  Sparkles, Palette, Droplet, Wind, Wand2, Eye,
   CheckCircle2, MessageCircle, ArrowRight, Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ export default function SpecialtiesPage() {
   const { catalogo, configuracoes, isLoaded } = useDataContext();
   const phoneNumber = configuracoes?.whatsapp || "5512982001553";
 
-  const handleWhatsApp = (message) => {
+  const handleWhatsApp = (message: string) => {
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
   };
@@ -145,7 +145,7 @@ export default function SpecialtiesPage() {
                     <div className="flex justify-between items-start gap-4 mb-3">
                       <h3 className="font-sans text-xl font-bold text-foreground line-clamp-2">{product.nome}</h3>
                       <span className="font-bold text-primary whitespace-nowrap text-lg">
-                        R$ {parseFloat(product.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                     <p className="text-muted-foreground text-sm mb-4 line-clamp-2 flex-grow">

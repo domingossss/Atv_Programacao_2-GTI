@@ -12,6 +12,7 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+package-lock.json
 
 # Pasta de cache do Vite
 .vite/
@@ -22,6 +23,7 @@ dist-ssr/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
 
 # Arquivos do Sistema Operacional (Windows / macOS)
 Thumbs.db
@@ -39,3 +41,11 @@ Desktop.ini
 *.njsproj
 *.sln
 *.sw?
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temp files
+*.tmp
+.temp/

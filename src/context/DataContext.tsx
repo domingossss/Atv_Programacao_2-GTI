@@ -1,5 +1,7 @@
 import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { GaleriaItem, CatalogoItem, Configuracoes, Lead } from '@/types';
+import { apiGaleria, apiCatalogo, apiConfiguracoes, apiLeads } from '@/lib/api';
+import { toast } from 'sonner';
 
 const DEFAULT_GALERIA: GaleriaItem[] = [
   { id: '1', titulo: 'Loiro Perolado', descricao: 'Mega Hair 60cm', categoria: 'mega_hair', imagem: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&q=80&w=800', data_upload: new Date().toISOString() },
@@ -72,19 +74,18 @@ export const DataProvider = ({ children }: DataProviderProps) => {
 
   useEffect(() => {
     loadAllData();
+  }, []);
 
+  // Recarrega dados quando houver mudanças no localStorage (sincronização entre abas)
+  useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'josemegahair_galeria' && e.newValue) {
-        setGaleria(JSON.parse(e.newValue));
-      }
-      if (e.key === 'josemegahair_catalogo' && e.newValue) {
-        setCatalogo(JSON.parse(e.newValue));
-      }
-      if (e.key === 'josemegahair_configuracoes' && e.newValue) {
-        setConfiguracoes(JSON.parse(e.newValue));
-      }
-      if (e.key === 'josemegahair_leads' && e.newValue) {
-        setLeads(JSON.parse(e.newValue));
+      // storageArea é null quando a mudança veio da mesma aba/origem
+      // só recarregar se vier de outra aba para evitar loop infinito
+      if (e.storageArea && (e.key === 'josemegahair_galeria' || 
+          e.key === 'josemegahair_catalogo' || 
+          e.key === 'josemegahair_configuracoes')) {
+        console.log('Storage event detected, reloading data from backend');
+        loadAllData();
       }
     };
 
@@ -92,131 +93,273 @@ export const DataProvider = ({ children }: DataProviderProps) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const loadAllData = () => {
-    loadGaleria();
-    loadCatalogo();
-    loadConfiguracoes();
-    loadLeads();
-    setIsLoaded(true);
-  };
+  const loadAllData = async () => {
+    try {
+      setIsLoaded(false);
+      
+      // Carrega dados públicos paralelamente do backend
+      const [galeriaRes, catalogoRes, configRes] = await Promise.all([
+        apiGaleria.findAll(),
+        apiCatalogo.findAll(),
+        apiConfiguracoes.find(),
+      ]);
+      
+      setGaleria(galeriaRes.data);
+      setCatalogo(catalogoRes.data);
+      setConfiguracoes(configRes.data);
 
-  const loadGaleria = () => {
-    const stored = localStorage.getItem('josemegahair_galeria');
-    if (stored) {
-      setGaleria(JSON.parse(stored));
-    } else {
-      setGaleria(DEFAULT_GALERIA);
-      localStorage.setItem('josemegahair_galeria', JSON.stringify(DEFAULT_GALERIA));
-    }
-  };
-
-  const saveGaleria = (fotos: GaleriaItem[]) => {
-    setGaleria(fotos);
-    localStorage.setItem('josemegahair_galeria', JSON.stringify(fotos));
-  };
-
-  const loadCatalogo = () => {
-    const stored = localStorage.getItem('josemegahair_catalogo');
-    if (stored) {
-      setCatalogo(JSON.parse(stored));
-    } else {
-      setCatalogo(DEFAULT_CATALOGO);
-      localStorage.setItem('josemegahair_catalogo', JSON.stringify(DEFAULT_CATALOGO));
-    }
-  };
-
-  const saveCatalogo = (produtos: CatalogoItem[]) => {
-    setCatalogo(produtos);
-    localStorage.setItem('josemegahair_catalogo', JSON.stringify(produtos));
-  };
-
-  const loadConfiguracoes = () => {
-    const stored = localStorage.getItem('josemegahair_configuracoes');
-    if (stored) {
-      setConfiguracoes(JSON.parse(stored));
-    } else {
-      setConfiguracoes(DEFAULT_CONFIGURACOES);
-      localStorage.setItem('josemegahair_configuracoes', JSON.stringify(DEFAULT_CONFIGURACOES));
-    }
-  };
-
-  const saveConfiguracoes = (config: Configuracoes) => {
-    setConfiguracoes(config);
-    localStorage.setItem('josemegahair_configuracoes', JSON.stringify(config));
-  };
-
-  const addFoto = (foto: GaleriaItem) => {
-    const updated = [foto, ...galeria];
-    saveGaleria(updated);
-  };
-
-  const editFoto = (id: string, dados: Partial<GaleriaItem>) => {
-    const updated = galeria.map(f => f.id === id ? { ...f, ...dados } : f);
-    saveGaleria(updated);
-  };
-
-  const deleteFoto = (id: string) => {
-    const updated = galeria.filter(f => f.id !== id);
-    saveGaleria(updated);
-  };
-
-  const addProduto = (produto: CatalogoItem) => {
-    const updated = [produto, ...catalogo];
-    saveCatalogo(updated);
-  };
-
-  const editProduto = (id: string, dados: Partial<CatalogoItem>) => {
-    const updated = catalogo.map(p => p.id === id ? { ...p, ...dados } : p);
-    saveCatalogo(updated);
-  };
-
-  const deleteProduto = (id: string) => {
-    const updated = catalogo.filter(p => p.id !== id);
-    saveCatalogo(updated);
-  };
-
-  const updateConfiguracoes = (dados: Partial<Configuracoes>) => {
-    const updated = { ...configuracoes, ...dados };
-    saveConfiguracoes(updated);
-  };
-
-  const loadLeads = () => {
-    const stored = localStorage.getItem('josemegahair_leads');
-    if (stored) {
-      setLeads(JSON.parse(stored));
-    } else {
-      // Check for old key and migrate
-      const oldStored = localStorage.getItem('charpynter_leads');
-      if (oldStored) {
-        const oldLeads = JSON.parse(oldStored);
-        setLeads(oldLeads);
-        localStorage.setItem('josemegahair_leads', JSON.stringify(oldLeads));
-        // Keep old key as backup
-      } else {
-        setLeads([]);
-        localStorage.setItem('josemegahair_leads', JSON.stringify([]));
+      // Carrega os leads se o admin estiver logado
+      const token = localStorage.getItem('adminToken');
+      if (token) {
+        try {
+          const leadsRes = await apiLeads.findAll();
+          setLeads(leadsRes.data);
+        } catch (leadsErr) {
+          console.warn('Erro ao carregar leads:', leadsErr);
+        }
       }
+      
+      // Sincroniza com localStorage como cache
+      localStorage.setItem('josemegahair_galeria', JSON.stringify(galeriaRes.data));
+      localStorage.setItem('josemegahair_catalogo', JSON.stringify(catalogoRes.data));
+      localStorage.setItem('josemegahair_configuracoes', JSON.stringify(configRes.data));
+    } catch (error) {
+      console.warn('Erro ao carregar dados do backend, usando localStorage como cache:', error);
+      
+      // Fallback para LocalStorage
+      const storedGaleria = localStorage.getItem('josemegahair_galeria');
+      if (storedGaleria) setGaleria(JSON.parse(storedGaleria));
+      else setGaleria(DEFAULT_GALERIA);
+
+      const storedCatalogo = localStorage.getItem('josemegahair_catalogo');
+      if (storedCatalogo) setCatalogo(JSON.parse(storedCatalogo));
+      else setCatalogo(DEFAULT_CATALOGO);
+
+      const storedConfig = localStorage.getItem('josemegahair_configuracoes');
+      if (storedConfig) setConfiguracoes(JSON.parse(storedConfig));
+      else setConfiguracoes(DEFAULT_CONFIGURACOES);
+
+      const storedLeads = localStorage.getItem('josemegahair_leads');
+      if (storedLeads) setLeads(JSON.parse(storedLeads));
+    } finally {
+      setIsLoaded(true);
     }
   };
 
-  const saveLeads = (leadsData: Lead[]) => {
-    setLeads(leadsData);
-    localStorage.setItem('josemegahair_leads', JSON.stringify(leadsData));
+  // Funções da Galeria
+  const addFoto = async (foto: GaleriaItem) => {
+    try {
+      // Adiciona ao estado local imediatamente com ID temporário
+      const tempId = foto.id || Date.now().toString();
+      const fotoComId = { ...foto, id: tempId };
+      const updatedLocal = [fotoComId, ...galeria];
+      setGaleria(updatedLocal);
+      localStorage.setItem('josemegahair_galeria', JSON.stringify(updatedLocal));
+
+      // Envia para API (sem o ID para deixar o banco gerar)
+      const { id, ...postData } = fotoComId;
+      const res = await apiGaleria.create(postData);
+
+      // Atualiza com o ID real do banco
+      const finalUpdated = galeria.map(f => f.id === tempId ? res.data : f);
+      setGaleria(finalUpdated);
+      localStorage.setItem('josemegahair_galeria', JSON.stringify(finalUpdated));
+      
+      toast.success('Foto adicionada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao adicionar foto:', error);
+      toast.error('Erro ao adicionar foto. Verifique o console para detalhes.');
+      // Mantém a foto no estado local mesmo com erro
+    }
   };
 
-  const addLead = (lead: Lead) => {
-    const updated = [lead, ...leads];
-    saveLeads(updated);
+  const editFoto = async (id: string, dados: Partial<GaleriaItem>) => {
+    try {
+      // Atualiza estado local imediatamente
+      const tempUpdated = galeria.map(f => f.id === id ? { ...f, ...dados } : f);
+      setGaleria(tempUpdated);
+      localStorage.setItem('josemegahair_galeria', JSON.stringify(tempUpdated));
+
+      const res = await apiGaleria.update(id, dados);
+      const finalUpdated = galeria.map(f => f.id === id ? res.data : f);
+      setGaleria(finalUpdated);
+      localStorage.setItem('josemegahair_galeria', JSON.stringify(finalUpdated));
+      
+      toast.success('Foto atualizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao editar foto:', error);
+      toast.error('Erro ao editar foto. Verifique o console para detalhes.');
+      // Mantém a atualização local mesmo com erro
+    }
   };
 
-  const updateLead = (id: string, dados: Partial<Lead>) => {
-    const updated = leads.map(l => l.id === id ? { ...l, ...dados } : l);
-    saveLeads(updated);
+  const deleteFoto = async (id: string) => {
+    try {
+      // Remove do estado local imediatamente
+      const tempUpdated = galeria.filter(f => f.id !== id);
+      setGaleria(tempUpdated);
+      localStorage.setItem('josemegahair_galeria', JSON.stringify(tempUpdated));
+
+      await apiGaleria.remove(id);
+      // Estado já está atualizado, não precisa fazer nada mais
+      
+      toast.success('Foto excluída com sucesso!');
+    } catch (error) {
+      console.error('Erro ao deletar foto:', error);
+      toast.error('Erro ao excluir foto. Verifique o console para detalhes.');
+      // Mantém a remoção local mesmo com erro
+    }
   };
 
-  const deleteLead = (id: string) => {
-    const updated = leads.filter(l => l.id !== id);
-    saveLeads(updated);
+  // Funções do Catálogo
+  const addProduto = async (produto: CatalogoItem) => {
+    try {
+      // Adiciona ao estado local imediatamente com ID temporário
+      const tempId = produto.id || Date.now().toString();
+      const produtoComId = { ...produto, id: tempId };
+      const updatedLocal = [produtoComId, ...catalogo];
+      setCatalogo(updatedLocal);
+      localStorage.setItem('josemegahair_catalogo', JSON.stringify(updatedLocal));
+
+      // Envia para API (sem o ID para deixar o banco gerar)
+      const { id, ...postData } = produtoComId;
+      const res = await apiCatalogo.create(postData);
+
+      // Atualiza com o ID real do banco
+      const finalUpdated = catalogo.map(p => p.id === tempId ? res.data : p);
+      setCatalogo(finalUpdated);
+      localStorage.setItem('josemegahair_catalogo', JSON.stringify(finalUpdated));
+      
+      toast.success('Produto adicionado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao adicionar produto:', error);
+      toast.error('Erro ao adicionar produto. Verifique o console para detalhes.');
+      // Mantém o produto no estado local mesmo com erro
+    }
+  };
+
+  const editProduto = async (id: string, dados: Partial<CatalogoItem>) => {
+    try {
+      // Atualiza estado local imediatamente
+      const tempUpdated = catalogo.map(p => p.id === id ? { ...p, ...dados } : p);
+      setCatalogo(tempUpdated);
+      localStorage.setItem('josemegahair_catalogo', JSON.stringify(tempUpdated));
+
+      const res = await apiCatalogo.update(id, dados);
+      const finalUpdated = catalogo.map(p => p.id === id ? res.data : p);
+      setCatalogo(finalUpdated);
+      localStorage.setItem('josemegahair_catalogo', JSON.stringify(finalUpdated));
+      
+      toast.success('Produto atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao editar produto:', error);
+      toast.error('Erro ao editar produto. Verifique o console para detalhes.');
+      // Mantém a atualização local mesmo com erro
+    }
+  };
+
+  const deleteProduto = async (id: string) => {
+    try {
+      // Remove do estado local imediatamente
+      const tempUpdated = catalogo.filter(p => p.id !== id);
+      setCatalogo(tempUpdated);
+      localStorage.setItem('josemegahair_catalogo', JSON.stringify(tempUpdated));
+
+      await apiCatalogo.remove(id);
+      // Estado já está atualizado, não precisa fazer nada mais
+      
+      toast.success('Produto excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao deletar produto:', error);
+      toast.error('Erro ao excluir produto. Verifique o console para detalhes.');
+      // Mantém a remoção local mesmo com erro
+    }
+  };
+
+  // Funções de Configuração
+  const updateConfiguracoes = async (dados: Partial<Configuracoes>) => {
+    try {
+      // Atualiza estado local imediatamente
+      const tempUpdated = { ...configuracoes, ...dados };
+      setConfiguracoes(tempUpdated);
+      localStorage.setItem('josemegahair_configuracoes', JSON.stringify(tempUpdated));
+
+      const res = await apiConfiguracoes.update(dados);
+      const finalUpdated = { ...configuracoes, ...res.data };
+      setConfiguracoes(finalUpdated);
+      localStorage.setItem('josemegahair_configuracoes', JSON.stringify(finalUpdated));
+      
+      toast.success('Configurações atualizadas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar configuracoes:', error);
+      toast.error('Erro ao atualizar configuracoes. Verifique o console para detalhes.');
+      // Mantém a atualização local mesmo com erro
+    }
+  };
+
+  // Funções de Leads
+  const addLead = async (lead: Lead) => {
+    try {
+      // Adiciona ao estado local imediatamente com ID temporário
+      const tempId = lead.id || Date.now().toString();
+      const leadComId = { ...lead, id: tempId };
+      const updatedLocal = [leadComId, ...leads];
+      setLeads(updatedLocal);
+      localStorage.setItem('josemegahair_leads', JSON.stringify(updatedLocal));
+
+      // Envia para API (sem o ID para deixar o banco gerar)
+      const { id, ...postData } = leadComId;
+      const res = await apiLeads.create(postData);
+
+      // Atualiza com o ID real do banco
+      const finalUpdated = leads.map(l => l.id === tempId ? res.data : l);
+      setLeads(finalUpdated);
+      localStorage.setItem('josemegahair_leads', JSON.stringify(finalUpdated));
+      
+      toast.success('Lead adicionado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao adicionar lead:', error);
+      toast.error('Erro ao adicionar lead. Verifique o console para detalhes.');
+      // Mantém o lead no estado local mesmo com erro
+    }
+  };
+
+  const updateLead = async (id: string, dados: Partial<Lead>) => {
+    try {
+      // Atualiza estado local imediatamente
+      const tempUpdated = leads.map(l => l.id === id ? { ...l, ...dados } : l);
+      setLeads(tempUpdated);
+      localStorage.setItem('josemegahair_leads', JSON.stringify(tempUpdated));
+
+      const res = await apiLeads.update(id, dados);
+      const finalUpdated = leads.map(l => l.id === id ? res.data : l);
+      setLeads(finalUpdated);
+      localStorage.setItem('josemegahair_leads', JSON.stringify(finalUpdated));
+      
+      toast.success('Lead atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar lead:', error);
+      toast.error('Erro ao atualizar lead. Verifique o console para detalhes.');
+      // Mantém a atualização local mesmo com erro
+    }
+  };
+
+  const deleteLead = async (id: string) => {
+    try {
+      // Remove do estado local imediatamente
+      const tempUpdated = leads.filter(l => l.id !== id);
+      setLeads(tempUpdated);
+      localStorage.setItem('josemegahair_leads', JSON.stringify(tempUpdated));
+
+      await apiLeads.remove(id);
+      // Estado já está atualizado, não precisa fazer nada mais
+      
+      toast.success('Lead excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao deletar lead:', error);
+      toast.error('Erro ao excluir lead. Verifique o console para detalhes.');
+      // Mantém a remoção local mesmo com erro
+    }
   };
 
   const value: DataContextValue = {
@@ -225,14 +368,14 @@ export const DataProvider = ({ children }: DataProviderProps) => {
     configuracoes,
     leads,
     isLoaded,
-    loadGaleria,
-    saveGaleria,
-    loadCatalogo,
-    saveCatalogo,
-    loadConfiguracoes,
-    saveConfiguracoes,
-    loadLeads,
-    saveLeads,
+    loadGaleria: loadAllData,
+    saveGaleria: () => {},
+    loadCatalogo: loadAllData,
+    saveCatalogo: () => {},
+    loadConfiguracoes: loadAllData,
+    saveConfiguracoes: () => {},
+    loadLeads: loadAllData,
+    saveLeads: () => {},
     addFoto,
     editFoto,
     deleteFoto,

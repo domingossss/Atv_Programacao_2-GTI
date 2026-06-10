@@ -37,6 +37,9 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 // Lazy loading - Páginas Admin
 const LoginPage = lazy(() => import('./pages/admin/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/admin/RegisterPage'));
+const ResetPasswordPage = lazy(() => import('./pages/admin/ResetPasswordPage'));
+const ConfirmEmailPage = lazy(() => import('./pages/admin/ConfirmEmailPage'));
 const DashboardLayout = lazy(() => import('./components/admin/DashboardLayout'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const GaleriaPageAdmin = lazy(() => import('./pages/admin/GaleriaPage'));
@@ -64,6 +67,36 @@ export default function AppRoutes() {
               <LoginPage />
             </Suspense>
           } 
+        />
+
+        {/* Rota Registro Admin - Pública */}
+        <Route
+          path="/admin/register"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <RegisterPage />
+            </Suspense>
+          }
+        />
+
+        {/* Rota Reset de Senha - Pública */}
+        <Route
+          path="/admin/reset-password"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <ResetPasswordPage />
+            </Suspense>
+          }
+        />
+
+        {/* Rota Confirmação de Email - Pública */}
+        <Route
+          path="/admin/confirm-email"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <ConfirmEmailPage />
+            </Suspense>
+          }
         />
 
         {/* Rotas Admin - Protegidas */}

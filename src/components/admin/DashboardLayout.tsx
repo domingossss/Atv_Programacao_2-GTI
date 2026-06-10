@@ -8,7 +8,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  MoreHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -51,18 +52,27 @@ export default function DashboardLayout() {
       )}
 
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[hsl(var(--admin-sidebar))] text-white
-        transform transition-transform duration-300 ease-in-out flex flex-col
+        fixed lg:static inset-y-0 left-0 z-50 ${sidebarOpen ? 'w-64' : 'w-16'} bg-[hsl(var(--admin-sidebar))] text-white
+        transform transition-all duration-300 ease-in-out flex flex-col overflow-hidden
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="p-6 flex items-center justify-between">
-          <h2 className="font-sans text-2xl font-bold text-primary">CharpynterHair</h2>
+          <h2 className={`
+            font-sans text-2xl font-bold text-primary transition-opacity duration-300
+            ${sidebarOpen ? 'opacity-100' : 'opacity-0 hidden'}
+          `}>CharpynterHair</h2>
+          <button
+            className="hidden lg:flex text-white/70 hover:text-white justify-end w-full"
+            onClick={toggleSidebar}
+          >
+            {sidebarOpen ? <X size={24} /> : <MoreHorizontal size={24} />}
+          </button>
           <button className="lg:hidden text-white/70 hover:text-white" onClick={closeSidebar}>
             <X size={24} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 px-2 py-6 space-y-2">
           {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
             return (
@@ -71,35 +81,46 @@ export default function DashboardLayout() {
                 to={item.path}
                 onClick={closeSidebar}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200
-                  ${isActive 
-                    ? 'bg-primary/20 text-primary font-medium shadow-inner' 
+                  flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center px-2'} py-3 rounded-lg transition-colors duration-200
+                  ${isActive
+                    ? 'bg-primary/20 text-primary font-medium shadow-inner'
                     : 'text-white/70 hover:bg-white/10 hover:text-white'
                   }
                 `}
               >
-                <item.icon size={20} className={isActive ? 'text-primary' : 'text-white/70'} />
-                {item.name}
+                <item.icon size={20} className="flex-shrink-0" />
+                <span className={`
+                  whitespace-nowrap transition-opacity duration-200 delay-100
+                  ${sidebarOpen ? 'opacity-100' : 'opacity-0 hidden'}
+                `}>{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
         <div className="p-4 border-t border-white/10">
-          <button 
+          <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-white/70 hover:bg-destructive/20 hover:text-red-400 transition-colors duration-200"
+            className={`
+              flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center px-2'} py-3 w-full rounded-lg text-white/70 hover:bg-destructive/20 hover:text-red-400 transition-colors duration-200
+            `}
           >
-            <LogOut size={20} />
-            Sair
+            <LogOut size={20} className="flex-shrink-0" />
+            <span className={`
+              whitespace-nowrap transition-opacity duration-200 delay-100
+              ${sidebarOpen ? 'opacity-100' : 'opacity-0 hidden'}
+            `}>Sair</span>
           </button>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="lg:hidden bg-card border-b border-border p-4 flex items-center justify-between sticky top-0 z-30">
+        <header className="bg-card border-b border-border p-4 flex items-center justify-between sticky top-0 z-30">
           <h2 className="font-sans text-xl font-bold text-foreground">Painel Admin</h2>
-          <button onClick={toggleSidebar} className="text-foreground p-2 rounded-md hover:bg-muted">
+          <button onClick={toggleSidebar} className="text-foreground p-2 rounded-md hover:bg-muted lg:flex hidden">
+            <MoreHorizontal size={24} />
+          </button>
+          <button onClick={toggleSidebar} className="text-foreground p-2 rounded-md hover:bg-muted lg:hidden">
             <Menu size={24} />
           </button>
         </header>

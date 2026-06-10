@@ -1,10 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet';
+import { useState, useEffect } from 'react';
+import Helmet from 'react-helmet';
 import { Search, Eye, MessageSquare, Archive, Trash2, X, Clock, User, Phone, Mail, MailOpen, Scissors, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { apiLeads } from '@/lib/api';
 
-const SAMPLE_LEADS = [
+interface Lead {
+  id: string;
+  nome_cliente: string;
+  telefone_whatsapp: string;
+  email: string;
+  servico: string;
+  data_contato: string;
+  status_lead: 'novo' | 'visualizado' | 'respondido' | 'convertido' | 'arquivado';
+  mensagem: string;
+}
+
+interface Action {
+  id: number;
+  action: string;
+  time: string;
+}
+
+const SAMPLE_LEADS: Lead[] = [
   { id: '1', nome_cliente: 'Mariana Costa', telefone_whatsapp: '11999887766', email: '', servico: 'Mega Hair', data_contato: '2026-04-21T09:30:00Z', status_lead: 'novo', mensagem: 'Histórico: Descoloração / Luzes | Detalhes: Gostaria de saber os valores para um Mega Hair de 60cm loiro.' },
   { id: '2', nome_cliente: 'Juliana Silva', telefone_whatsapp: '11988776655', email: 'juliana.s@example.com', servico: 'Colorimetria / Luzes', data_contato: '2026-04-20T14:15:00Z', status_lead: 'respondido', mensagem: 'Histórico: Coloração / Tintura | Detalhes: Preciso corrigir a cor do meu cabelo que manchou em outro salão.' },
   { id: '3', nome_cliente: 'Fernanda Lima', telefone_whatsapp: '11977665544', email: 'fe.lima@example.com', servico: 'Corte Visagista', data_contato: '2026-04-19T10:45:00Z', status_lead: 'arquivado', mensagem: 'Agendamento para corte visagismo na sexta-feira.' },
@@ -13,33 +31,39 @@ const SAMPLE_LEADS = [
 ];
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('todos');
   const [dateFilter, setDateFilter] = useState('todos');
-  const [selectedLead, setSelectedLead] = useState(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [feedback, setFeedback] = useState({ type: '', msg: '' });
+  const [loading, setLoading] = useState(false);
 
-  const registrarAcao = (mensagem) => {
+  const registrarAcao = (mensagem: string) => {
     const dataAtual = new Date();
     const horaFormatada = dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const dataFormatada = dataAtual.toLocaleDateString('pt-BR');
-    
-    const novaAcao = {
+
+    const novaAcao: Action = {
       id: Date.now(),
       action: mensagem,
       time: `${horaFormatada} - ${dataFormatada}`
     };
-    
+
     const acoesSalvas = JSON.parse(localStorage.getItem('charpynter_actions') || '[]');
-    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10); 
-    
+    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10);
+
     localStorage.setItem('charpynter_actions', JSON.stringify(novasAcoes));
-    window.dispatchEvent(new Event('storage'));
   };
 
-  useEffect(() => {
-    const carregarLeads = () => {
+  const carregarLeads = async () => {
+    setLoading(true);
+    try {
+      const response = await apiLeads.findAll();
+      setLeads(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar leads:', error);
+      // Fallback para localStorage se a API falhar
       const stored = localStorage.getItem('charpynter_leads');
       if (stored) {
         setLeads(JSON.parse(stored));
@@ -47,11 +71,13 @@ export default function LeadsPage() {
         localStorage.setItem('charpynter_leads', JSON.stringify(SAMPLE_LEADS));
         setLeads(SAMPLE_LEADS);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     carregarLeads();
-    window.addEventListener('storage', carregarLeads);
-    return () => window.removeEventListener('storage', carregarLeads);
   }, []);
 
   useEffect(() => {
@@ -72,7 +98,7 @@ export default function LeadsPage() {
     if (dateFilter !== 'todos' && lead.data_contato) {
       const leadDate = new Date(lead.data_contato);
       const today = new Date();
-      const diffTime = Math.abs(today - leadDate);
+      const diffTime = Math.abs(today.getTime() - leadDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       if (dateFilter === '7dias') matchesDate = diffDays <= 7;
@@ -89,77 +115,103 @@ export default function LeadsPage() {
     return 'Boa noite';
   };
 
-  const handleWhatsApp = (phone, nome) => {
+  const handleWhatsApp = async (phone: string, nome: string) => {
     if (!phone) return;
     const cleanPhone = phone.replace(/\D/g, '');
     const saudacao = getSaudacao();
     
     const text = encodeURIComponent(`${saudacao} ${nome || ''} tudo bem? Vi que você respondeu o formulário de avaliação, fico muito grato pelo contato!`);
     
-    const updatedLeads = leads.map(l => l.telefone_whatsapp === phone ? { ...l, status_lead: 'respondido' } : l);
-    setLeads(updatedLeads);
-    localStorage.setItem('charpynter_leads', JSON.stringify(updatedLeads));
-    
-    registrarAcao(`Lead respondido via WhatsApp: ${nome}`);
-    window.open(`https://wa.me/55${cleanPhone}?text=${text}`, '_blank');
-  };
-
-  const handleArchive = (id, currentStatus) => {
-    const newStatus = currentStatus === 'arquivado' ? 'respondido' : 'arquivado';
-    const leadAlterado = leads.find(l => l.id === id);
-    
-    const updatedLeads = leads.map(l => l.id === id ? { ...l, status_lead: newStatus } : l);
-    setLeads(updatedLeads);
-    localStorage.setItem('charpynter_leads', JSON.stringify(updatedLeads));
-    
-    registrarAcao(`Lead ${leadAlterado.nome_cliente} foi ${newStatus === 'arquivado' ? 'arquivado' : 'restaurado'}`);
-    setFeedback({ type: 'success', msg: `Lead ${newStatus === 'arquivado' ? 'arquivado' : 'restaurado'} com sucesso.` });
-    
-    if (selectedLead && selectedLead.id === id) {
-      setSelectedLead({ ...selectedLead, status_lead: newStatus });
+    try {
+      const lead = leads.find(l => l.telefone_whatsapp === phone);
+      if (lead) {
+        await apiLeads.update(lead.id, { status_lead: 'respondido' });
+        const updatedLeads = leads.map(l => l.telefone_whatsapp === phone ? { ...l, status_lead: 'respondido' as const } : l);
+        setLeads(updatedLeads);
+      }
+      
+      registrarAcao(`Lead respondido via WhatsApp: ${nome}`);
+      window.open(`https://wa.me/55${cleanPhone}?text=${text}`, '_blank');
+    } catch (error) {
+      console.error('Erro ao atualizar lead:', error);
     }
   };
 
-  const handleToggleRead = (id, currentStatus) => {
-    const newStatus = currentStatus === 'novo' ? 'visualizado' : 'novo';
-    const updatedLeads = leads.map(l => l.id === id ? { ...l, status_lead: newStatus } : l);
+  const handleArchive = async (id: string, currentStatus: string) => {
+    const newStatus: Lead['status_lead'] = currentStatus === 'arquivado' ? 'respondido' : 'arquivado';
+    const leadAlterado = leads.find(l => l.id === id);
     
-    setLeads(updatedLeads);
-    localStorage.setItem('charpynter_leads', JSON.stringify(updatedLeads));
-    setFeedback({ type: 'success', msg: `Lead marcado como ${newStatus === 'novo' ? 'Não Lido' : 'Lido'}.` });
+    try {
+      await apiLeads.update(id, { status_lead: newStatus });
+      const updatedLeads = leads.map(l => l.id === id ? { ...l, status_lead: newStatus } : l);
+      setLeads(updatedLeads);
+      
+      registrarAcao(`Lead ${leadAlterado?.nome_cliente} foi ${newStatus === 'arquivado' ? 'arquivado' : 'restaurado'}`);
+      setFeedback({ type: 'success', msg: `Lead ${newStatus === 'arquivado' ? 'arquivado' : 'restaurado'} com sucesso.` });
+      
+      if (selectedLead && selectedLead.id === id) {
+        setSelectedLead({ ...selectedLead, status_lead: newStatus });
+      }
+    } catch (error) {
+      console.error('Erro ao arquivar lead:', error);
+      setFeedback({ type: 'error', msg: 'Erro ao arquivar lead.' });
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleToggleRead = async (id: string, currentStatus: string) => {
+    const newStatus: Lead['status_lead'] = currentStatus === 'novo' ? 'visualizado' : 'novo';
+    
+    try {
+      await apiLeads.update(id, { status_lead: newStatus });
+      const updatedLeads = leads.map(l => l.id === id ? { ...l, status_lead: newStatus } : l);
+      setLeads(updatedLeads);
+      setFeedback({ type: 'success', msg: `Lead marcado como ${newStatus === 'novo' ? 'Não Lido' : 'Lido'}.` });
+    } catch (error) {
+      console.error('Erro ao atualizar lead:', error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja excluir permanentemente este lead?')) return;
 
     const leadExcluido = leads.find(l => l.id === id);
-    const updatedLeads = leads.filter(l => l.id !== id);
-    setLeads(updatedLeads);
-    localStorage.setItem('charpynter_leads', JSON.stringify(updatedLeads));
     
-    registrarAcao(`Lead excluído: ${leadExcluido?.nome_cliente}`);
-    setFeedback({ type: 'success', msg: 'Lead excluído com sucesso.' });
-    if (selectedLead && selectedLead.id === id) setSelectedLead(null);
-  };
-
-  const openLeadDetails = (lead) => {
-    setSelectedLead(lead);
-    if (lead.status_lead === 'novo') {
-      const updatedLeads = leads.map(l => l.id === lead.id ? { ...l, status_lead: 'visualizado' } : l);
+    try {
+      await apiLeads.remove(id);
+      const updatedLeads = leads.filter(l => l.id !== id);
       setLeads(updatedLeads);
-      localStorage.setItem('charpynter_leads', JSON.stringify(updatedLeads));
+      
+      registrarAcao(`Lead excluído: ${leadExcluido?.nome_cliente}`);
+      setFeedback({ type: 'success', msg: 'Lead excluído com sucesso.' });
+      if (selectedLead && selectedLead.id === id) setSelectedLead(null);
+    } catch (error) {
+      console.error('Erro ao excluir lead:', error);
+      setFeedback({ type: 'error', msg: 'Erro ao excluir lead.' });
     }
   };
 
-  const getStatusBadge = (status) => {
-    const styles = {
+  const openLeadDetails = async (lead: Lead) => {
+    setSelectedLead(lead);
+    if (lead.status_lead === 'novo') {
+      try {
+        await apiLeads.update(lead.id, { status_lead: 'visualizado' });
+        const updatedLeads = leads.map(l => l.id === lead.id ? { ...l, status_lead: 'visualizado' as const } : l);
+        setLeads(updatedLeads);
+      } catch (error) {
+        console.error('Erro ao atualizar lead:', error);
+      }
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
       novo: 'bg-blue-100 text-blue-700 border-blue-200',
       visualizado: 'bg-purple-100 text-purple-700 border-purple-200',
       respondido: 'bg-emerald-100 text-emerald-700 border-emerald-200',
       convertido: 'bg-primary/20 text-primary border-primary/30',
       arquivado: 'bg-zinc-100 text-zinc-600 border-zinc-200',
     };
-    const labels = { novo: 'Novo', visualizado: 'Visualizado', respondido: 'Respondido', convertido: 'Convertido', arquivado: 'Arquivado' };
+    const labels: Record<string, string> = { novo: 'Novo', visualizado: 'Visualizado', respondido: 'Respondido', convertido: 'Convertido', arquivado: 'Arquivado' };
     const safeStatus = status || 'novo';
     return (
       <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[safeStatus] || styles.novo}`}>
@@ -248,9 +300,15 @@ export default function LeadsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filteredLeads.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan="6" className="px-6 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                  Carregando leads...
+                </td>
+              </tr>
+            ) : filteredLeads.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
                   Nenhum lead encontrado para esta aba.
                 </td>
               </tr>
@@ -260,7 +318,7 @@ export default function LeadsPage() {
                   <td className="px-6 py-4">
                     <div className="font-medium text-foreground flex items-center gap-2">
                       {lead.nome_cliente}
-                      {lead.mensagem?.includes('Histórico:') && <Sparkles className="w-3.5 h-3.5 text-primary" title="Avaliação Completa" />}
+                      {lead.mensagem?.includes('Histórico:') && <Sparkles className="w-3.5 h-3.5 text-primary" />}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -304,7 +362,11 @@ export default function LeadsPage() {
 
       {/* Cards Mobile */}
       <div className="md:hidden space-y-4">
-        {filteredLeads.length === 0 ? (
+        {loading ? (
+          <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
+            Carregando leads...
+          </div>
+        ) : filteredLeads.length === 0 ? (
           <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
             Nenhum lead encontrado para esta aba.
           </div>

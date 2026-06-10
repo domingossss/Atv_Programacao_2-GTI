@@ -1,18 +1,43 @@
 import { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet';
+import Helmet from 'react-helmet';
 import { Save, Phone, MapPin, Clock, Instagram, Mail, MessageCircle, Lock, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useDataContext } from '@/context/DataContext';
+import { apiAuth } from '@/lib/api';
+
+interface ConfigFormData {
+  telefone: string;
+  email: string;
+  instagram: string;
+  whatsapp: string;
+  endereco: string;
+  horario_segunda: string;
+  horario_terca: string;
+  horario_quarta: string;
+  horario_quinta: string;
+  horario_sexta: string;
+  horario_sabado: string;
+  horario_domingo: string;
+}
+
+interface SecurityFormData {
+  emailAtual: string;
+  novoEmail: string;
+  confirmarNovoEmail: string;
+  senhaAtual: string;
+  novaSenha: string;
+  confirmarNovaSenha: string;
+}
 
 export default function ConfiguracoesPage() {
   const { configuracoes, updateConfiguracoes } = useDataContext();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ConfigFormData>({
     telefone: '',
     email: '',
     instagram: '',
@@ -27,7 +52,7 @@ export default function ConfiguracoesPage() {
     horario_domingo: ''
   });
 
-  const [securityData, setSecurityData] = useState({
+  const [securityData, setSecurityData] = useState<SecurityFormData>({
     emailAtual: '',
     novoEmail: '',
     confirmarNovoEmail: '',
@@ -37,6 +62,16 @@ export default function ConfiguracoesPage() {
   });
 
   useEffect(() => {
+    const loadAdminEmail = async () => {
+      try {
+        const response = await apiAuth.getProfile();
+        setSecurityData(prev => ({ ...prev, emailAtual: response.data.admin.email }));
+      } catch (error) {
+        const storedEmail = localStorage.getItem('josemegahair_admin_email') || 'admin@josemegahair.com';
+        setSecurityData(prev => ({ ...prev, emailAtual: storedEmail }));
+      }
+    };
+
     if (configuracoes) {
       setFormData({
         telefone: configuracoes.telefone || '',
@@ -55,34 +90,28 @@ export default function ConfiguracoesPage() {
       setIsLoading(false);
     }
 
-    const storedEmail = localStorage.getItem('josemegahair_admin_email') || 'admin@josemegahair.com';
-    setSecurityData(prev => ({ ...prev, emailAtual: storedEmail }));
+    loadAdminEmail();
   }, [configuracoes]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSecurityChange = (e) => {
+  const handleSecurityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setSecurityData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // === VALIDAÇÃO DE SEGURANÇA ===
-    const storedPassword = localStorage.getItem('josemegahair_admin_password') || 'admin123';
     const isChangingSecurity = securityData.novoEmail || securityData.novaSenha;
 
     if (isChangingSecurity) {
       if (!securityData.senhaAtual) {
         toast.error('A senha atual é obrigatória para alterar credenciais de segurança.');
-        return;
-      }
-      if (securityData.senhaAtual !== storedPassword) {
-        toast.error('A senha atual está incorreta.');
         return;
       }
     }
@@ -109,18 +138,22 @@ export default function ConfiguracoesPage() {
 
     try {
       // 1. Salva as configurações do formulário via DataContext
-      updateConfiguracoes(formData);
+      await updateConfiguracoes(formData);
 
       let textoAcao = 'Configurações do salão atualizadas';
 
-      // 2. Salva as configurações de segurança caso validadas
+      // 2. Salva as configurações de segurança caso validadas (via API)
       if (securityData.novoEmail) {
+        await apiAuth.changeEmail({ newEmail: securityData.novoEmail });
         localStorage.setItem('josemegahair_admin_email', securityData.novoEmail);
         textoAcao = 'E-mail de login atualizado';
       }
-      
+
       if (securityData.novaSenha) {
-        localStorage.setItem('josemegahair_admin_password', securityData.novaSenha);
+        await apiAuth.changePassword({
+          currentPassword: securityData.senhaAtual,
+          newPassword: securityData.novaSenha
+        });
         textoAcao = securityData.novoEmail ? 'Credenciais de login e senha atualizadas' : 'Senha de sistema atualizada';
       }
 
@@ -129,12 +162,12 @@ export default function ConfiguracoesPage() {
 
       // 4. Registra a ação para o Dashboard com data/hora real
       const dataAtual = new Date();
-      const novaAcao = { 
-        id: Date.now(), 
-        action: textoAcao, 
-        time: `${dataAtual.toLocaleDateString('pt-BR')} às ${dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` 
+      const novaAcao = {
+        id: Date.now(),
+        action: textoAcao,
+        time: `${dataAtual.toLocaleDateString('pt-BR')} às ${dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
       };
-      
+
       const acoesAntigas = JSON.parse(localStorage.getItem('josemegahair_actions') || '[]');
       localStorage.setItem('josemegahair_actions', JSON.stringify([novaAcao, ...acoesAntigas].slice(0, 10)));
 
@@ -148,10 +181,14 @@ export default function ConfiguracoesPage() {
         novaSenha: '',
         confirmarNovaSenha: ''
       }));
-      
-    } catch (error) {
+
+    } catch (error: any) {
       console.error('Erro ao salvar configurações:', error);
-      toast.error('Erro ao salvar as configurações.');
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Erro ao salvar as configurações.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -365,7 +402,7 @@ export default function ConfiguracoesPage() {
               <div key={day.id} className="flex items-center justify-between gap-4">
                 <Label htmlFor={day.id} className="w-32 shrink-0">{day.label}</Label>
                 <Input 
-                  id={day.id} name={day.id} value={formData[day.id]} onChange={handleChange}
+                  id={day.id} name={day.id} value={formData[day.id as keyof ConfigFormData]} onChange={handleChange}
                   placeholder="09:00 - 18:00 ou Fechado"
                   className="flex-1"
                 />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Helmet } from 'react-helmet';
+import Helmet from 'react-helmet';
 import { Plus, Trash2, Edit2, X, Upload, Package, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,7 @@ export default function CatalogPage() {
     nome: '',
     descricao: '',
     preco: '',
-    tipo: 'Liso',
+    tipo: '',
     comprimento: '',
     estoque: ''
   });
@@ -37,14 +37,13 @@ export default function CatalogPage() {
     const novaAcao = {
       id: Date.now(),
       action: mensagem,
-      time: `${dataAtual.toLocaleDateString('pt-BR')} às ${dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` 
+      time: `${dataAtual.toLocaleDateString('pt-BR')} às ${dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
     };
-    
+
     const acoesSalvas = JSON.parse(localStorage.getItem('josemegahair_actions') || '[]');
-    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10); 
-    
+    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10);
+
     localStorage.setItem('josemegahair_actions', JSON.stringify(novasAcoes));
-    window.dispatchEvent(new Event('storage'));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +71,7 @@ export default function CatalogPage() {
         nome: product.nome,
         descricao: product.descricao,
         preco: product.preco.toString(),
-        tipo: product.tipo || 'Liso',
+        tipo: product.tipo || '',
         comprimento: product.comprimento || '',
         estoque: product.estoque?.toString() || ''
       });
@@ -247,7 +246,7 @@ export default function CatalogPage() {
                 <div className="flex justify-between items-start mb-2 gap-4">
                   <h3 className="font-sans text-lg text-foreground line-clamp-2">{product.nome}</h3>
                   <span className="font-bold text-primary whitespace-nowrap">
-                    R$ {parseFloat(product.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {product.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 

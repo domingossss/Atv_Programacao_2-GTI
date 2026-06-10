@@ -1,8 +1,7 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Helmet } from 'react-helmet';
+import Helmet from 'react-helmet';
 
 export default function NotFoundPage() {
   return (

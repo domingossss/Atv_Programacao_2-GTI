@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Helmet } from 'react-helmet';
+import Helmet from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Play, Maximize } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useDataContext } from '@/context/DataContext';
-import { GaleriaItem } from '@/types';
+import { GaleriaItem } from '@/types/index';
 
 const CATEGORIES = [
   { id: 'todos', label: 'Todos' },
@@ -16,20 +16,21 @@ const CATEGORIES = [
 ];
 
 // Helper para detectar se a mídia é um vídeo
-const isVideo = (mediaStr: string) => {
+const isVideo = (mediaStr: string | undefined) => {
   if (!mediaStr) return false;
   return mediaStr.startsWith('data:video') || /\.(mp4|webm|ogg)$/i.test(mediaStr);
 };
 
 // Subcomponente para gerenciar o estado individual de cada foto/vídeo
 const PostCard = ({ post, displayCategory, onExpand }: { post: GaleriaItem; displayCategory: string; onExpand: (post: GaleriaItem) => void }) => {
-  const isMediaVideo = isVideo(post.imagem);
+  const mediaUrl = post.imagem || post.midias?.[0] || post.imagem_url || '';
+  const isMediaVideo = isVideo(mediaUrl);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handleVideoClick = () => {
     if (!isMediaVideo || !videoRef.current) return;
-    
+
     if (isPlaying) {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -48,15 +49,15 @@ const PostCard = ({ post, displayCategory, onExpand }: { post: GaleriaItem; disp
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       className="relative flex flex-col group rounded-xl overflow-hidden bg-card shadow-sm hover:shadow-xl transition-all duration-300 border border-border/40 h-full"
     >
-      <div 
-        className={`relative aspect-[4/5] w-full overflow-hidden ${isMediaVideo ? 'cursor-pointer' : 'cursor-zoom-in'}`} 
+      <div
+        className={`relative aspect-[4/5] w-full overflow-hidden ${isMediaVideo ? 'cursor-pointer' : 'cursor-zoom-in'}`}
         onClick={isMediaVideo ? handleVideoClick : () => onExpand(post)}
       >
         {isMediaVideo ? (
           <>
-            <video 
+            <video
               ref={videoRef}
-              src={post.imagem} 
+              src={mediaUrl}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               loop
               playsInline
@@ -81,9 +82,9 @@ const PostCard = ({ post, displayCategory, onExpand }: { post: GaleriaItem; disp
           </>
         ) : (
           <>
-            <img 
-              src={post.imagem} 
-              alt={post.titulo} 
+            <img
+              src={mediaUrl}
+              alt={post.titulo}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               loading="lazy"
             />
@@ -275,21 +276,25 @@ export default function GaleryPage() {
             >
               {/* Área da Mídia */}
               <div className="w-full md:w-2/3 bg-black flex items-center justify-center relative min-h-[40vh] md:min-h-0">
-                {isVideo(selectedPost.imagem) ? (
-                  <video 
-                    src={selectedPost.imagem} 
-                    className="w-full h-full max-h-[50vh] md:max-h-[85vh] object-contain"
-                    controls
-                    autoPlay
-                    playsInline
-                  />
-                ) : (
-                  <img 
-                    src={selectedPost.imagem} 
-                    alt={selectedPost.titulo}
-                    className="w-full h-full max-h-[50vh] md:max-h-[85vh] object-contain"
-                  />
-                )}
+                {(() => {
+                  const mediaUrl = selectedPost.imagem || selectedPost.midias?.[0] || selectedPost.imagem_url || '';
+                  const isVideoMedia = isVideo(mediaUrl);
+                  return isVideoMedia ? (
+                    <video
+                      src={mediaUrl}
+                      className="w-full h-full max-h-[50vh] md:max-h-[85vh] object-contain"
+                      controls
+                      autoPlay
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={mediaUrl}
+                      alt={selectedPost.titulo}
+                      className="w-full h-full max-h-[50vh] md:max-h-[85vh] object-contain"
+                    />
+                  );
+                })()}
               </div>
 
               {/* Área de Texto / Informações com overflow e whitespace-pre-wrap */}

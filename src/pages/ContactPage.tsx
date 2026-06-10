@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useDataContext } from '@/context/DataContext';
+import { apiLeads } from '@/lib/api';
 
 export default function ContactPage() {
   const { configuracoes, isLoaded } = useDataContext();
@@ -36,12 +37,11 @@ export default function ContactPage() {
       action: mensagem,
       time: `${horaFormatada} - ${dataFormatada}`
     };
-    
+
     const acoesSalvas = JSON.parse(localStorage.getItem('josemegahair_actions') || '[]');
-    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10); 
-    
+    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10);
+
     localStorage.setItem('josemegahair_actions', JSON.stringify(novasAcoes));
-    window.dispatchEvent(new Event('storage'));
   };
 
   const validateForm = () => {
@@ -65,27 +65,18 @@ export default function ContactPage() {
     setLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
       const newLead = {
-        id: Date.now().toString(),
         nome_cliente: formData.nome_cliente,
         telefone_whatsapp: formData.telefone_whatsapp,
         servico: formData.interesse,
         quimica: formData.quimica,
         mensagem: formData.mensagem,
-        data_contato: new Date().toISOString(),
-        status_lead: 'novo',
-        lido: false
       };
 
-      const storedLeads = localStorage.getItem('josemegahair_leads');
-      const leadsData = storedLeads ? JSON.parse(storedLeads) : [];
-      leadsData.push(newLead);
-      localStorage.setItem('josemegahair_leads', JSON.stringify(leadsData));
+      // Chama a API para criar o lead
+      await apiLeads.create(newLead);
       
       registrarAcao(`Nova avaliação de: ${formData.nome_cliente} (${formData.interesse})`);
-      window.dispatchEvent(new Event('storage'));
 
       const phone = configuracoes?.whatsapp || "5512982001553"; 
       const textoWhatsApp = `Olá, José! Meu nome é *${formData.nome_cliente}*. 
@@ -109,6 +100,7 @@ Estava no site e gostaria de uma avaliação.
       setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
       setError('Erro ao salvar a mensagem. Tente novamente.');
+      console.error('Erro ao criar lead:', err);
     } finally {
       setLoading(false);
     }

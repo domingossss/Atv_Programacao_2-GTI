@@ -5,7 +5,7 @@ import { ArrowRight, Star, Sparkles, Scissors, Droplets, Play, Layers, Instagram
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Helmet } from 'react-helmet';
+import Helmet from 'react-helmet';
 import { useDataContext } from '@/context/DataContext';
 import { GaleriaItem } from '@/types';
 
@@ -326,7 +326,7 @@ export default function HomePage() {
               <p className="text-muted-foreground text-lg">Resultados reais das nossas transformações mais recentes.</p>
             </div>
             <Button variant="link" className="text-foreground hover:text-primary p-0 flex items-center gap-2 group text-lg" asChild>
-              <Link to="/galeria">Ver todas as obras <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" /></Link>
+              <Link to="/galeria">Ver todas as postagens <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" /></Link>
             </Button>
           </motion.div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Clock, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,11 +34,11 @@ export default function Header() {
   const getTodayHours = useCallback(() => {
     if (!configuracoes) return null;
     const days = [
-      'horario_domingo', 'horario_segunda', 'horario_terca', 
+      'horario_domingo', 'horario_segunda', 'horario_terca',
       'horario_quarta', 'horario_quinta', 'horario_sexta', 'horario_sabado'
     ];
     const today = new Date().getDay();
-    return configuracoes[days[today] as keyof typeof configuracoes];
+    return String(configuracoes[days[today] as keyof typeof configuracoes]);
   }, [configuracoes]);
 
   const todayHours = useMemo(() => getTodayHours(), [getTodayHours]);
@@ -47,14 +47,16 @@ export default function Header() {
     const checkStatus = () => {
       if (!todayHours) return;
 
-      if (todayHours.toLowerCase().includes('fechado') || todayHours.toLowerCase().includes('folga')) {
+      const hoursStr = String(todayHours);
+
+      if (hoursStr.toLowerCase().includes('fechado') || hoursStr.toLowerCase().includes('folga')) {
         setIsOpen(false);
         setScheduleText('Fechado Hoje');
         return;
       }
 
       const timeRegex = /\d{1,2}:\d{2}/g;
-      const times = todayHours.match(timeRegex);
+      const times = hoursStr.match(timeRegex);
 
       if (times && times.length >= 2) {
         const abreAs = times[0];
@@ -77,7 +79,7 @@ export default function Header() {
           setScheduleText(`Fechado • Abre às ${abreAs}`);
         }
       } else {
-        setScheduleText(`Hoje: ${todayHours}`);
+        setScheduleText(`Hoje: ${hoursStr}`);
       }
     };
 

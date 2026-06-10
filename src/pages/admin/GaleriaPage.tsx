@@ -1,24 +1,38 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Helmet } from 'react-helmet';
+import { useState, useRef } from 'react';
+import Helmet from 'react-helmet';
 import { Plus, Trash2, Edit2, X, Upload, Film, Play, Pause, Search, Filter, ImageIcon, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { useDataContext } from '@/context/DataContext'; 
+import { useDataContext } from '@/context/DataContext';
+import { GaleriaItem } from '@/types/index';
 
-const isVideo = (mediaStr) => {
+interface GalleryFormData {
+  titulo: string;
+  descricao?: string;
+  categoria: string;
+  imagem?: string;
+} 
+
+const isVideo = (mediaStr: string | null | undefined): boolean => {
   if (!mediaStr) return false;
   return mediaStr.startsWith('data:video') || /\.(mp4|webm|ogg)$/i.test(mediaStr);
 };
 
-const AdminMediaCard = ({ photo, openModal, handleDelete }) => {
-  const isMediaVideo = isVideo(photo.imagem);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = useRef(null);
+interface AdminMediaCardProps {
+  photo: GaleriaItem;
+  openModal: (photo: GaleriaItem) => void;
+  handleDelete: (id: string) => void;
+}
 
-  const togglePlay = (e) => {
+const AdminMediaCard = ({ photo, openModal, handleDelete }: AdminMediaCardProps) => {
+  const isMediaVideo = isVideo(photo.imagem || photo.midias?.[0]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!videoRef.current) return;
     if (isPlaying) {
@@ -30,14 +44,16 @@ const AdminMediaCard = ({ photo, openModal, handleDelete }) => {
     }
   };
 
+  const displayImage = photo.imagem || photo.midias?.[0] || photo.imagem_url || '';
+
   return (
     <div className="group bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col relative">
       <div className="aspect-square overflow-hidden relative bg-black">
         {isMediaVideo ? (
           <>
-            <video 
+            <video
               ref={videoRef}
-              src={photo.imagem} 
+              src={displayImage}
               className={`w-full h-full object-cover transition-transform duration-500 ${!isPlaying ? 'group-hover:scale-105 opacity-80' : 'opacity-100'}`}
               loop
               playsInline
@@ -45,7 +61,7 @@ const AdminMediaCard = ({ photo, openModal, handleDelete }) => {
             <div className="absolute top-2 left-2 bg-black/60 p-1.5 rounded-md backdrop-blur-sm z-10 pointer-events-none">
               <Film className="w-4 h-4 text-white" />
             </div>
-            <div 
+            <div
               className="absolute inset-0 flex items-center justify-center z-10 cursor-pointer"
               onClick={togglePlay}
             >
@@ -61,9 +77,9 @@ const AdminMediaCard = ({ photo, openModal, handleDelete }) => {
             </div>
           </>
         ) : (
-          <img 
-            src={photo.imagem} 
-            alt={photo.titulo} 
+          <img
+            src={displayImage}
+            alt={photo.titulo}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         )}
@@ -109,67 +125,64 @@ export default function GaleriaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('todos');
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<GalleryFormData>({
     titulo: '',
-    descricao: '',
-    categoria: 'todos',
-    imagem: '' 
+    categoria: 'todos'
   });
   
-  const [fileBase64, setFileBase64] = useState(null);
+  const [fileBase64, setFileBase64] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
 
-  const registrarAcao = (mensagem) => {
+  const registrarAcao = (mensagem: string) => {
     const dataAtual = new Date();
     const novaAcao = {
       id: Date.now(),
       action: mensagem,
-      time: `${dataAtual.toLocaleDateString('pt-BR')} às ${dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` 
+      time: `${dataAtual.toLocaleDateString('pt-BR')} às ${dataAtual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
     };
-    
+
     const acoesSalvas = JSON.parse(localStorage.getItem('josemegahair_actions') || '[]');
-    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10); 
-    
+    const novasAcoes = [novaAcao, ...acoesSalvas].slice(0, 10);
+
     localStorage.setItem('josemegahair_actions', JSON.stringify(novasAcoes));
-    window.dispatchEvent(new Event('storage'));
   };
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files[0];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
     if (selected) {
-      if (selected.size > 10 * 1024 * 1024) { 
+      if (selected.size > 10 * 1024 * 1024) {
         toast.error('O arquivo excede o limite de 10MB.');
         e.target.value = '';
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFileBase64(reader.result);
+        setFileBase64(reader.result as string);
         setFileName(selected.name);
       };
       reader.readAsDataURL(selected);
     }
   };
 
-  const openModal = (photo = null) => {
+  const openModal = (photo: GaleriaItem | null = null) => {
     if (photo) {
       setEditingId(photo.id);
       setFormData({
         titulo: photo.titulo,
-        descricao: photo.descricao || '',
+        descricao: photo.descricao,
         categoria: photo.categoria || 'todos',
         imagem: photo.imagem
       });
-      setFileBase64(photo.imagem);
+      setFileBase64(photo.imagem || null);
     } else {
       setEditingId(null);
-      setFormData({ titulo: '', descricao: '', categoria: 'todos', imagem: '' });
+      setFormData({ titulo: '', categoria: 'todos' });
       setFileBase64(null);
     }
     setFileName('');
@@ -177,9 +190,9 @@ export default function GaleriaPage() {
     setTimeout(() => setIsModalOpen(true), 10);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!formData.titulo) return toast.error('O título é obrigatório.');
     if (!editingId && !fileBase64) return toast.error('A mídia (imagem ou vídeo) é obrigatória.');
     if (formData.categoria === 'todos') return toast.error('Selecione uma categoria específica.');
@@ -218,7 +231,7 @@ export default function GaleriaPage() {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     if (!window.confirm('Tem certeza que deseja excluir esta mídia?')) return;
     try {
       deleteFoto(id);

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Helmet } from 'react-helmet';
+import Helmet from 'react-helmet';
 import { 
   FileImage as ImageIcon, Package, Mail, Activity, 
   Trash2, MessageCircle, Sparkles, BarChart3, Clock
