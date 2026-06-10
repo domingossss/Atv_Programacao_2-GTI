@@ -1,0 +1,139 @@
+# Nginx Configuration Example for Charpynter Hair API
+# This configuration enforces TLS 1.3 and implements security best practices
+
+server {
+    listen 443 ssl http2;
+    server_name api.charpynterhair.com;
+
+    # ===== TLS 1.3 Configuration =====
+    # Enforce TLS 1.3 only (most secure version)
+    ssl_protocols TLSv1.3;
+    
+    # Strong cipher suites for TLS 1.3
+    ssl_ciphers 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256';
+    ssl_prefer_server_ciphers off;
+
+    # SSL Certificate Configuration
+    # Replace with your actual certificate paths
+    ssl_certificate /etc/ssl/certs/api.charpynterhair.com.crt;
+    ssl_certificate_key /etc/ssl/private/api.charpynterhair.com.key;
+
+    # SSL Session Configuration
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_tickets off;
+
+    # OCSP Stapling
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    ssl_trusted_certificate /etc/ssl/certs/chain.pem;
+    resolver 8.8.8.8 8.8.4.4 valid=300s;
+    resolver_timeout 5s;
+
+    # ===== Security Headers =====
+    
+    # HSTS (HTTP Strict Transport Security)
+    # Enforce HTTPS for 1 year, include subdomains, enable preload
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+    # Prevent clickjacking
+    add_header X-Frame-Options "DENY" always;
+
+    # Prevent MIME type sniffing
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # XSS Protection
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Referrer Policy
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Content Security Policy (basic)
+    # Note: Backend API may not need strict CSP, adjust as needed
+    add_header Content-Security-Policy "default-src 'self'" always;
+
+    # Permissions Policy (formerly Feature Policy)
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    # Remove server information
+    server_tokens off;
+
+    # ===== Rate Limiting =====
+    # Basic rate limiting to prevent abuse
+    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+    limit_req zone=api_limit burst=20 nodelay;
+
+    # ===== Body Size Limits =====
+    client_max_body_size 10k;
+
+    # ===== Proxy Configuration =====
+    
+    # Proxy to Node.js backend
+    location / {
+        # Pass request to backend
+        proxy_pass http://localhost:3333;
+        
+        # HTTP version
+        proxy_http_version 1.1;
+        
+        # WebSocket support
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        
+        # Headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Disable buffering for real-time responses
+        proxy_buffering off;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Health check endpoint (no rate limiting)
+    location /health {
+        proxy_pass http://localhost:3333/health;
+        access_log off;
+    }
+}
+
+# HTTP to HTTPS Redirect
+server {
+    listen 80;
+    server_name api.charpynterhair.com;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+# ===== Additional Security Considerations =====
+#
+# 1. Firewall Configuration:
+#    - Only allow port 80 and 443 from external
+#    - Block all other incoming ports
+#    - Use ufw, iptables, or cloud firewall
+#
+# 2. DDoS Protection:
+#    - Consider using Cloudflare or similar service
+#    - Implement additional rate limiting at edge
+#    - Monitor traffic patterns
+#
+# 3. Log Monitoring:
+#    - Enable access and error logs
+#    - Use log aggregation (ELK, Splunk, etc.)
+#    - Set up alerts for suspicious activity
+#
+# 4. Certificate Management:
+#    - Use Let's Encrypt with certbot for free SSL
+#    - Set up auto-renewal
+#    - Monitor certificate expiration
+#
+# 5. Regular Updates:
+#    - Keep Nginx updated
+#    - Review security advisories
+#    - Test configuration changes in staging first
