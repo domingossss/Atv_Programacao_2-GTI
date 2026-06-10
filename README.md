@@ -1,4 +1,3 @@
-```markdown
 # CharpynterHair - Salão de Beleza & Sistema de Gestão
 
 Projeto acadêmico desenvolvido para a disciplina de Linguagem de Programação, ministrada pelo professor Leandro Guarino.
