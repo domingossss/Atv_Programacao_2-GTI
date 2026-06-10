@@ -11,14 +11,15 @@ import Lead from '../modules/leads/leads.entity';
 import Configuracoes from '../modules/configuracoes/configuracoes.entity';
 
 export const AppDataSource = new DataSource({
-  type: 'mysql',
+  type: 'postgres',
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306'),
-  username: process.env.DB_USERNAME || 'root',
-  password: process.env.DB_PASSWORD || 'Lorena35FAF&',
-  database: process.env.DB_NAME || 'bd_charpynterhair',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  username: process.env.DB_USERNAME || 'postgres',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'charpynterhair',
   synchronize: process.env.NODE_ENV !== 'production', // Cria/atualiza tabelas automaticamente (apenas em dev!)
   logging: process.env.NODE_ENV === 'development',
+  ssl: process.env.DB_HOST?.includes('render.com') ? true : false,
   entities: [
     Admin,
     RefreshToken,
