@@ -29,7 +29,7 @@ const startServer = async () => {
           .where('expiresAt < :now', { now: new Date() })
           .execute();
         
-        if (result.affected > 0) {
+        if (result.affected && result.affected > 0) {
           console.log(`🧹 Limpeza: ${result.affected} nonces expirados deletados`);
         }
       } catch (error) {

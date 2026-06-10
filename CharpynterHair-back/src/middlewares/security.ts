@@ -45,7 +45,7 @@ export const securityMiddleware = (): RequestHandler => {
     crossOriginEmbedderPolicy: { policy: 'require-corp' },
     crossOriginOpenerPolicy: { policy: 'same-origin' },
     crossOriginResourcePolicy: { policy: 'same-origin' },
-    xContentTypeOptions: 'nosniff',
+    xContentTypeOptions: true,
     xDnsPrefetchControl: { allow: false },
     xFrameOptions: { action: 'deny' },
     xPermittedCrossDomainPolicies: { permittedPolicies: 'none' },

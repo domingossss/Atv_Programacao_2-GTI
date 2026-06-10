@@ -449,6 +449,42 @@ export async function resetPassword(token: string, newPassword: string) {
 }
 
 /**
+ * Verifica email usando token
+ */
+export async function verifyEmail(token: string) {
+  if (!token) {
+    const error: any = new Error('Token de verificação é obrigatório.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Buscar administrador pelo token de verificação
+  const admin = await admsRepository.findByEmailVerificationToken(token);
+  if (!admin) {
+    const error: any = new Error('Token de verificação inválido ou expirado.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Verificar se o token expirou
+  if (admin.emailVerificationExpiresAt && new Date() > admin.emailVerificationExpiresAt) {
+    const error: any = new Error('Token de verificação expirado.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Verificar se o email já foi verificado
+  if (admin.isEmailVerified) {
+    return { message: 'Email já verificado.' };
+  }
+
+  // Marcar email como verificado
+  await admsRepository.verifyEmail(admin.id);
+
+  return { message: 'Email verificado com sucesso!' };
+}
+
+/**
  * Reenvia email de verificação
  */
 export async function resendVerificationEmail(email: string) {

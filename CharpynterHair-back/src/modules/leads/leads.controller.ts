@@ -42,7 +42,8 @@ router.put(
   antiReplayMiddleware,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const lead = await leadsService.update(req.params.id, req.body);
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const lead = await leadsService.update(id, req.body);
       return res.status(200).json(lead);
     } catch (error) {
       next(error);
@@ -58,7 +59,8 @@ router.delete(
   antiReplayMiddleware,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await leadsService.remove(req.params.id);
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      await leadsService.remove(id);
       return res.status(200).json({ message: 'Lead removido com sucesso.' });
     } catch (error) {
       next(error);
